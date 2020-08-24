@@ -5,6 +5,8 @@ use actix_web::{App, HttpServer};
 
 use state::get_state;
 
+mod models;
+mod schema;
 mod state;
 
 #[actix_rt::main]
