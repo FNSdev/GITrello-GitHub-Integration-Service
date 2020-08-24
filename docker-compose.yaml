@@ -1,0 +1,12 @@
+version: '3'
+services:
+  db:
+    image: postgres:12.4-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./.data/db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: gitrello_github_integration_service
+      POSTGRES_USER: gitrello_github_integration_service
+      POSTGRES_PASSWORD: admin
