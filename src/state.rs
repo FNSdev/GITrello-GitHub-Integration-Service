@@ -17,6 +17,7 @@ pub enum Environment {
 pub struct State {
     pub environment: Environment,
     pub db_pool: DbPool,
+    pub secret: String,
 }
 
 pub fn get_state() -> State {
@@ -52,6 +53,10 @@ pub fn get_state() -> State {
         .build(manager)
         .expect("Failed to create database connection pool.");
 
-    let state = State {environment, db_pool};
+    let state = State {
+        environment,
+        db_pool,
+        secret: env::var("SECRET").expect("SECRET"),
+    };
     state
 }
