@@ -765,8 +765,10 @@ checksum = "aaf91faf136cb47367fa430cd46e37a788775e7fa104f8b4bcb3861dc389b724"
 name = "gitrello-github-integration-service"
 version = "0.1.0"
 dependencies = [
+ "actix-http",
  "actix-rt",
  "actix-service",
+ "actix-threadpool",
  "actix-web",
  "diesel",
  "dotenv",
@@ -774,6 +776,7 @@ dependencies = [
  "jsonwebtoken",
  "log",
  "pretty_env_logger",
+ "r2d2",
  "reqwest",
  "serde",
  "serde_json",

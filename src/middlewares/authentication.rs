@@ -72,36 +72,27 @@ impl<S, B> Service for JWTAuthenticationMiddleware<S>
     }
 
     // TODO parse header value in a separate function & add tests
-    // TODO insert custom User type instead of i64
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
         let headers = req.headers();
         let value = headers.get("Authorization");
-        match value {
-            Some(auth) => {
-                let header_value = auth.to_str().unwrap();
-                let parts: Vec<&str> = header_value.split(" ").collect();
 
-                if parts.len() != 2 || parts[0] != "Bearer"{
-                    warn!("Invalid Authorization header {}", header_value);
-                }
-                else {
-                    let state: Option<Data<State>> = req.app_data();
-                    match state {
-                        Some(state) => {
-                            let claims = get_claims(parts[1], state.secret.as_ref());
-                            match claims {
-                                Some(claims) => {
-                                    let mut extensions = req.extensions_mut();
-                                    extensions.insert::<i64>(claims.user_id);
-                                },
-                                _ => (),
-                            }
-                        },
-                        _ => (),
+        if let Some(value) = value {
+            let header_value = value.to_str().unwrap();
+            let parts: Vec<&str> = header_value.split(" ").collect();
+
+            if parts.len() != 2 || parts[0] != "Bearer"{
+                warn!("Invalid Authorization header {}", header_value);
+            }
+            else {
+                let state: Option<Data<State>> = req.app_data();
+                if let Some(state) = state {
+                    let claims = get_claims(parts[1], state.secret.as_ref());
+                    if let Some(claims) = claims {
+                        let mut extensions = req.extensions_mut();
+                        extensions.insert::<i64>(claims.user_id);
                     }
                 }
             }
-            _ => (),
         }
 
         let fut = self.service.call(req);
