@@ -1,4 +1,4 @@
-use diesel::{insert_into, RunQueryDsl};
+use diesel::{insert_into, result::DatabaseErrorKind, result::Error, RunQueryDsl};
 use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::PgConnection;
 
@@ -20,6 +20,13 @@ impl <'a> GithubProfileRepository<'a> {
         insert_into(github_profile)
             .values(data)
             .get_result(self.connection)
-            .map_err(|source| GITrelloError::DieselError { source })
+            .map_err(|source| {
+                match source {
+                    Error::DatabaseError (DatabaseErrorKind::UniqueViolation, error_info) => {
+                        GITrelloError::AlreadyExists { message: String::from(error_info.message()) }
+                    },
+                    _ => GITrelloError::DieselError { source }
+                }
+            })
     }
 }

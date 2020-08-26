@@ -38,7 +38,7 @@ pub async fn create_github_profile(
         let github_profile =
             web::block(move || {
                 let repository = GithubProfileRepository::new(&connection);
-                repository.create(&data)  // TODO handle duplicates (user_id is unique)
+                repository.create(&data)
             })
             .await;
 

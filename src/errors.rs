@@ -10,6 +10,7 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 struct ErrorResponse {
     pub error_message: String,
+    pub error_code: i16,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -31,25 +32,21 @@ pub enum GITrelloError {
     },
     NotAuthenticated,
     InternalError,
+    AlreadyExists {
+        message: String,
+    }
 }
 
 impl fmt::Display for GITrelloError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::DieselError { source} => {
-                write!(f, "{}", source.to_string())
-            },
-            Self::R2D2Error { source} => {
-                write!(f, "{}", source.to_string())
-            },
-            Self::HttpRequestError { source } => {
-                write!(f, "{}", source.to_string())
-            },
-            Self::GitHubAPIClientError { message } => {
-                write!(f, "{}", message)
-            },
+            Self::DieselError { source} => write!(f, "{}", source.to_string()),
+            Self::R2D2Error { source} => write!(f, "{}", source.to_string()),
+            Self::HttpRequestError { source } => write!(f, "{}", source.to_string()),
+            Self::GitHubAPIClientError { message } => write!(f, "{}", message),
             Self::NotAuthenticated => write!(f, "Authentication required"),
             Self::InternalError => write!(f, "Internal Server Error"),
+            Self::AlreadyExists { message } => write!(f, "{}", message) ,
         }
     }
 }
@@ -58,14 +55,26 @@ impl error::ResponseError for GITrelloError {
     fn status_code(&self) -> http::StatusCode {
         match self {
             Self::NotAuthenticated => http::StatusCode::UNAUTHORIZED,
+            Self::AlreadyExists {message: _} => http::StatusCode::BAD_REQUEST,
             _ => http::StatusCode::INTERNAL_SERVER_ERROR
         }
     }
 
     fn error_response(&self) -> HttpResponse {
         error!("{}", self.to_string());
+
+        let error_code = match self {
+            Self::DieselError { source: _ } => 100,
+            Self::R2D2Error { source: _ } => 101,
+            Self::HttpRequestError { source: _ } => 102,
+            Self::GitHubAPIClientError { message: _ } => 103,
+            Self::NotAuthenticated => 104,
+            Self::InternalError => 105,
+            Self::AlreadyExists { message: _ } => 106,
+        };
+
         ResponseBuilder::new(self.status_code())
             .set_header(http::header::CONTENT_TYPE, "application/json")
-            .json(ErrorResponse { error_message: self.to_string() })
+            .json(ErrorResponse { error_message: self.to_string(), error_code })
     }
 }
