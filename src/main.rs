@@ -4,7 +4,7 @@
 extern crate pretty_env_logger;
 
 use actix_cors::Cors;
-use actix_web::{App, HttpServer};
+use actix_web::{middleware::Logger, App, HttpServer};
 
 use state::get_state;
 
@@ -32,6 +32,7 @@ async fn main() -> std::io::Result<()> {
                 .allowed_origin(state.gitrello_url.as_str())
                 .finish()
             )
+            .wrap(Logger::default())
             .service(api::github_profile::create_github_profile)
             .service(api::github_profile::get_github_profile)
     })
