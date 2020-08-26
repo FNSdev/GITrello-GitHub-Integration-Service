@@ -3,6 +3,7 @@
 #[macro_use] extern crate log;
 extern crate pretty_env_logger;
 
+use actix_cors::Cors;
 use actix_web::{App, HttpServer};
 
 use state::get_state;
@@ -27,7 +28,12 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .data(state.clone())
             .wrap(middlewares::authentication::JWTAuthentication)
+            .wrap(Cors::new()
+                .allowed_origin(state.gitrello_url.as_str())
+                .finish()
+            )
             .service(api::github_profile::create_github_profile)
+            .service(api::github_profile::get_github_profile)
     })
     .bind("127.0.0.1:8001")?
     .run()

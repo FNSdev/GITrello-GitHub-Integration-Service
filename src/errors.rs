@@ -1,6 +1,7 @@
 use std::fmt;
 
 use actix_http::{ResponseBuilder, http};
+use actix_threadpool::BlockingError;
 use actix_web::{error, HttpResponse};
 use diesel;
 use r2d2;
@@ -11,6 +12,23 @@ use serde::Serialize;
 struct ErrorResponse {
     pub error_message: String,
     pub error_code: i16,
+}
+
+pub trait ToGITrelloError {
+    fn move_to_gitrello_error(self) -> GITrelloError;
+}
+
+impl ToGITrelloError for BlockingError<GITrelloError> {
+    fn move_to_gitrello_error(self) -> GITrelloError {
+        match self {
+            BlockingError::Error(e) => {
+                e
+            }
+            BlockingError::Canceled => {
+                GITrelloError::InternalError
+            }
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -34,6 +52,9 @@ pub enum GITrelloError {
     InternalError,
     AlreadyExists {
         message: String,
+    },
+    NotFound {
+        message: String,
     }
 }
 
@@ -46,7 +67,8 @@ impl fmt::Display for GITrelloError {
             Self::GitHubAPIClientError { message } => write!(f, "{}", message),
             Self::NotAuthenticated => write!(f, "Authentication required"),
             Self::InternalError => write!(f, "Internal Server Error"),
-            Self::AlreadyExists { message } => write!(f, "{}", message) ,
+            Self::AlreadyExists { message } => write!(f, "{}", message),
+            Self::NotFound { message } => write!(f, "{}", message),
         }
     }
 }
@@ -55,7 +77,8 @@ impl error::ResponseError for GITrelloError {
     fn status_code(&self) -> http::StatusCode {
         match self {
             Self::NotAuthenticated => http::StatusCode::UNAUTHORIZED,
-            Self::AlreadyExists {message: _} => http::StatusCode::BAD_REQUEST,
+            Self::AlreadyExists { message: _ } => http::StatusCode::BAD_REQUEST,
+            Self::NotFound { message: _ } => http::StatusCode::NOT_FOUND,
             _ => http::StatusCode::INTERNAL_SERVER_ERROR
         }
     }
@@ -71,6 +94,7 @@ impl error::ResponseError for GITrelloError {
             Self::NotAuthenticated => 104,
             Self::InternalError => 105,
             Self::AlreadyExists { message: _ } => 106,
+            Self::NotFound { message: _ } => 107,
         };
 
         ResponseBuilder::new(self.status_code())

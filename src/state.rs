@@ -18,6 +18,7 @@ pub struct State {
     pub environment: Environment,
     pub db_pool: DbPool,
     pub secret: String,
+    pub gitrello_url: String,
 }
 
 pub fn get_state() -> State {
@@ -57,6 +58,7 @@ pub fn get_state() -> State {
         environment,
         db_pool,
         secret: env::var("SECRET").expect("SECRET"),
+        gitrello_url: env::var("GITRELLO_URL").expect("GITRELLO_URL"),
     };
     state
 }
