@@ -52,13 +52,14 @@ pub enum GITrelloError {
         message: String,
     },
     NotAuthenticated,
-    InternalError,
     AlreadyExists {
         message: String,
     },
     NotFound {
         message: String,
-    }
+    },
+    PermissionDenied,
+    InternalError,
 }
 
 impl fmt::Display for GITrelloError {
@@ -73,6 +74,7 @@ impl fmt::Display for GITrelloError {
             Self::InternalError => write!(f, "Internal Server Error"),
             Self::AlreadyExists { message } => write!(f, "{}", message),
             Self::NotFound { message } => write!(f, "{}", message),
+            Self::PermissionDenied  => write!(f, "Permission denied")
         }
     }
 }
@@ -83,6 +85,7 @@ impl error::ResponseError for GITrelloError {
             Self::NotAuthenticated => http::StatusCode::UNAUTHORIZED,
             Self::AlreadyExists { message: _ } => http::StatusCode::BAD_REQUEST,
             Self::NotFound { message: _ } => http::StatusCode::NOT_FOUND,
+            Self::PermissionDenied => http::StatusCode::FORBIDDEN,
             _ => http::StatusCode::INTERNAL_SERVER_ERROR
         }
     }
@@ -100,6 +103,7 @@ impl error::ResponseError for GITrelloError {
             Self::AlreadyExists { message: _ } => 106,
             Self::NotFound { message: _ } => 107,
             Self::GITrelloAPIClientError { message: _ } => 108,
+            Self::PermissionDenied => 109,
         };
 
         ResponseBuilder::new(self.status_code())
