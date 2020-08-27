@@ -48,6 +48,9 @@ pub enum GITrelloError {
     GitHubAPIClientError {
         message: String,
     },
+    GITrelloAPIClientError {
+        message: String,
+    },
     NotAuthenticated,
     InternalError,
     AlreadyExists {
@@ -65,6 +68,7 @@ impl fmt::Display for GITrelloError {
             Self::R2D2Error { source} => write!(f, "{}", source.to_string()),
             Self::HttpRequestError { source } => write!(f, "{}", source.to_string()),
             Self::GitHubAPIClientError { message } => write!(f, "{}", message),
+            Self::GITrelloAPIClientError { message } => write!(f, "{}", message),
             Self::NotAuthenticated => write!(f, "Authentication required"),
             Self::InternalError => write!(f, "Internal Server Error"),
             Self::AlreadyExists { message } => write!(f, "{}", message),
@@ -95,6 +99,7 @@ impl error::ResponseError for GITrelloError {
             Self::InternalError => 105,
             Self::AlreadyExists { message: _ } => 106,
             Self::NotFound { message: _ } => 107,
+            Self::GITrelloAPIClientError { message: _ } => 108,
         };
 
         ResponseBuilder::new(self.status_code())
