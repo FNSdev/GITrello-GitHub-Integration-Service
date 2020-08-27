@@ -7,7 +7,6 @@ pub struct BoardRepository {
     pub id: i32,
     pub board_id: i64,
     pub repository_id: i64,
-    pub github_profile_id: i32,
 }
 
 #[table_name = "board_repository"]
@@ -15,5 +14,4 @@ pub struct BoardRepository {
 pub struct NewBoardRepository {
     pub board_id: i64,
     pub repository_id: i64,
-    pub github_profile_id: i32,
 }

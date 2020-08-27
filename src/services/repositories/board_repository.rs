@@ -27,14 +27,6 @@ impl <'a> BoardRepositoryRepository<'a> {
                     Error::DatabaseError(DatabaseErrorKind::UniqueViolation, error_info) => {
                         GITrelloError::AlreadyExists { message: String::from(error_info.message()) }
                     },
-                    Error::DatabaseError(DatabaseErrorKind::ForeignKeyViolation, _) => {
-                        GITrelloError::NotFound {
-                            message: format!(
-                                "github_profile with id {} does not exist",
-                                data.github_profile_id,
-                            ),
-                        }
-                    }
                     _ => GITrelloError::DieselError { source }
                 }
             })
