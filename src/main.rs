@@ -35,6 +35,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(api::github_profile::create_github_profile)
             .service(api::github_profile::get_github_profile)
+            .service(api::github_repository::get_github_repositories)
     })
     .bind("127.0.0.1:8001")?
     .run()

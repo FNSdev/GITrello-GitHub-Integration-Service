@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug)]
 pub struct APIError {
@@ -10,4 +10,10 @@ pub struct APIError {
 pub struct GithubUser {
     pub id: i64,
     pub login: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct Repository {
+    pub id: i64,
+    pub name: String,
 }

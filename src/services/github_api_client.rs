@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use serde_json;
 
 use crate::errors::GITrelloError;
-use crate::value_objects::github_api::{APIError, GithubUser};
+use crate::value_objects::github_api::{APIError, GithubUser, Repository};
 
 const GITHUB_API_URL: &str = "https://api.github.com";
 
@@ -94,5 +94,17 @@ impl GitHubAPIClient {
             .await;
 
         self.process_response::<GithubUser>(response, StatusCode::OK).await
+    }
+
+    pub async fn get_repositories(&self) -> Result<Vec<Repository>, GITrelloError> {
+        let url = format!("{}/{}", GITHUB_API_URL, "user/repos");
+
+        let response = Client::new()
+            .get(&url)
+            .headers(self.headers.clone())
+            .send()
+            .await;
+
+        self.process_response::<Vec<Repository>>(response, StatusCode::OK).await
     }
 }
