@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::schema::board_repository;
 
-#[derive(Debug, Clone, Serialize, Queryable)]
+#[table_name = "board_repository"]
+#[derive(Debug, Clone, Identifiable, Serialize, Queryable)]
 pub struct BoardRepository {
     pub id: i32,
     pub board_id: i64,

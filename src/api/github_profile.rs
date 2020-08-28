@@ -22,9 +22,7 @@ pub async fn create_github_profile(
         return Err(GITrelloError::NotAuthenticated)
     }
 
-    let connection = state.db_pool
-        .get()
-        .map_err(|source| GITrelloError::R2D2Error { source })?;
+    let connection = state.get_db_connection()?;
 
     let github_api_client = GitHubAPIClient::new(json.access_token.as_str());
     let github_user_result = github_api_client.get_user().await;
@@ -64,9 +62,7 @@ pub async fn get_github_profile(
         return Err(GITrelloError::NotAuthenticated)
     }
 
-    let connection = state.db_pool
-        .get()
-        .map_err(|source| GITrelloError::R2D2Error { source })?;
+    let connection = state.get_db_connection()?;
 
     let github_profile = web::block(
             move || {

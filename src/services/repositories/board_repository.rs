@@ -1,18 +1,18 @@
 use diesel::{
-    insert_into, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl, ExpressionMethods
+    insert_into, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl,
+    ExpressionMethods,
 };
-use diesel::r2d2::{ConnectionManager, PooledConnection};
-use diesel::PgConnection;
 
 use crate::errors::GITrelloError;
 use crate::models::board_repository::{BoardRepository, NewBoardRepository};
+use crate::state::DbConnection;
 
 pub struct BoardRepositoryRepository<'a> {
-    connection: &'a PooledConnection<ConnectionManager<PgConnection>>,
+    connection: &'a DbConnection,
 }
 
 impl <'a> BoardRepositoryRepository<'a> {
-    pub fn new(connection: &'a PooledConnection<ConnectionManager<PgConnection>>) -> Self {
+    pub fn new(connection: &'a DbConnection) -> Self {
         Self { connection }
     }
 
@@ -43,6 +43,29 @@ impl <'a> BoardRepositoryRepository<'a> {
                     Error::NotFound => GITrelloError::NotFound {
                         message: String::from(
                             format!("board_repository for board {} does not exist", board_id),
+                        )
+                    },
+                    _ => GITrelloError::DieselError { source }
+                }
+            })
+    }
+
+    pub fn update_repository_id(
+        &self,
+        board_repository: &BoardRepository,
+        repository_id: i64,
+    ) -> Result<BoardRepository, GITrelloError>
+    {
+        use crate::schema::board_repository::{repository_id as repository_id_column};
+
+        update(board_repository)
+            .set(repository_id_column.eq(repository_id))
+            .get_result::<BoardRepository>(self.connection)
+            .map_err(|source| {
+                match source {
+                    Error::NotFound => GITrelloError::NotFound {
+                        message: String::from(
+                            format!("board_repository {} does not exist", board_repository.id),
                         )
                     },
                     _ => GITrelloError::DieselError { source }

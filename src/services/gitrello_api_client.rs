@@ -94,7 +94,7 @@ impl<'a> GITRelloAPIClient<'a> {
         board_id: i64,
     ) -> Result<BoardPermissions, GITrelloError>
     {
-        let url = format!("{}/{}", self.gitrello_url, "user");
+        let url = format!("{}/{}", self.gitrello_url, "api/v1/board-permissions");
 
         let response = Client::new()
             .get(&url)

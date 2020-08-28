@@ -1,10 +1,13 @@
 use std::env;
 
 use dotenv::dotenv;
-use diesel::r2d2::{self, ConnectionManager};
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::PgConnection;
 
+use crate::errors::GITrelloError;
+
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+pub type DbConnection = PooledConnection<ConnectionManager<PgConnection>>;
 
 #[derive(Clone, PartialEq)]
 pub enum Environment {
@@ -19,6 +22,14 @@ pub struct State {
     pub db_pool: DbPool,
     pub secret: String,
     pub gitrello_url: String,
+}
+
+impl State {
+    pub fn get_db_connection(&self) -> Result<DbConnection, GITrelloError> {
+        self.db_pool
+            .get()
+            .map_err(|source| GITrelloError::R2D2Error { source })
+    }
 }
 
 pub fn get_state() -> State {
