@@ -38,7 +38,7 @@ pub async fn create_board_repository(
     }
 
     if !board_permissions.expect("already checked").can_mutate {
-        return Err(GITrelloError::PermissionDenied),
+        return Err(GITrelloError::PermissionDenied);
     }
 
     let data = NewBoardRepository {
