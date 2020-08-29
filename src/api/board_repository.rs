@@ -15,6 +15,7 @@ use crate::value_objects::request_data::board_repository::{
 use crate::value_objects::response_data::board_repository::BoardRepositoryResponse;
 use crate::errors::GITrelloError;
 
+// TODO do not clone strings
 #[put("/api/v1/board-repositories")]
 pub async fn create_board_repository(
     req: HttpRequest,
@@ -59,7 +60,8 @@ pub async fn create_board_repository(
 
             let message = UpdateRepositoryIdMessage {
                 board_repository,
-                repository_id: json.repository_id,
+                repository_name: json.repository_name.clone(),
+                repository_owner: json.repository_owner.clone(),
             };
             let board_repository: BoardRepository = board_repository_actor
                 .send(message)
@@ -69,7 +71,8 @@ pub async fn create_board_repository(
             Ok(HttpResponse::Ok().json(BoardRepositoryResponse {
                 id: board_repository.id,
                 board_id: board_repository.board_id.to_string(),
-                repository_id: board_repository.repository_id.to_string(),
+                repository_name: board_repository.repository_name,
+                repository_owner: board_repository.repository_owner,
             }))
         }
         Err(e) => {
@@ -81,7 +84,8 @@ pub async fn create_board_repository(
                         .send(CreateBoardRepositoryMessage {
                             data: NewBoardRepository {
                                 board_id: json.board_id,
-                                repository_id: json.repository_id,
+                                repository_name: json.repository_name.clone(),
+                                repository_owner: json.repository_owner.clone(),
                             },
                         })
                         .await
@@ -90,7 +94,8 @@ pub async fn create_board_repository(
                     Ok(HttpResponse::Created().json(BoardRepositoryResponse {
                         id: board_repository.id,
                         board_id: board_repository.board_id.to_string(),
-                        repository_id: board_repository.repository_id.to_string(),
+                        repository_name: board_repository.repository_name,
+                        repository_owner: board_repository.repository_owner,
                     }))
                 },
                 _ => Err(e)
@@ -137,6 +142,7 @@ pub async fn get_board_repository(
     Ok(HttpResponse::Ok().json(BoardRepositoryResponse {
         id: board_repository.id,
         board_id: board_repository.board_id.to_string(),
-        repository_id: board_repository.repository_id.to_string(),
+        repository_name: board_repository.repository_name,
+        repository_owner: board_repository.repository_owner,
     }))
 }

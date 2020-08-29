@@ -51,16 +51,23 @@ impl BoardRepositoryRepository {
             })
     }
 
-    pub fn update_repository_id(
+    pub fn update_repository_data(
         &self,
         board_repository: &BoardRepository,
-        repository_id: i64,
+        repository_name: &str,
+        repository_owner: &str,
     ) -> Result<BoardRepository, GITrelloError>
     {
-        use crate::schema::board_repository::{repository_id as repository_id_column};
+        use crate::schema::board_repository::{
+            repository_name as repository_name_column,
+            repository_owner as repository_owner_column,
+        };
 
         update(board_repository)
-            .set(repository_id_column.eq(repository_id))
+            .set((
+                repository_name_column.eq(repository_name),
+                repository_owner_column.eq(repository_owner),
+            ))
             .get_result::<BoardRepository>(&self.connection)
             .map_err(|source| {
                 match source {
@@ -121,7 +128,8 @@ impl Handler<GetBoardRepositoryByBoardIdMessage> for BoardRepositoryRepository {
 #[rtype(result = "Result<BoardRepository, GITrelloError>")]
 pub struct UpdateRepositoryIdMessage {
     pub board_repository: BoardRepository,
-    pub repository_id: i64,
+    pub repository_name: String,
+    pub repository_owner: String,
 }
 
 impl Handler<UpdateRepositoryIdMessage> for BoardRepositoryRepository {
@@ -133,6 +141,10 @@ impl Handler<UpdateRepositoryIdMessage> for BoardRepositoryRepository {
         _ctx: &mut Self::Context,
     ) -> Self::Result
     {
-        self.update_repository_id(&msg.board_repository, msg.repository_id)
+        self.update_repository_data(
+            &msg.board_repository,
+            msg.repository_name.as_str(),
+            msg.repository_owner.as_str(),
+        )
     }
 }

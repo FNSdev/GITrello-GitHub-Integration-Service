@@ -6,8 +6,8 @@ use crate::value_objects::request_data::utils::i64_from_str;
 pub struct NewBoardRepositoryRequest {
     #[serde(deserialize_with = "i64_from_str")]
     pub board_id: i64,
-    #[serde(deserialize_with = "i64_from_str")]
-    pub repository_id: i64,
+    pub repository_name: String,
+    pub repository_owner: String,
 }
 
 #[derive(Debug, Deserialize)]

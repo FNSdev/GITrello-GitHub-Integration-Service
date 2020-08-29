@@ -15,5 +15,5 @@ pub struct GithubUser {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Repository {
     pub id: i64,
-    pub name: String,
+    pub full_name: String,
 }

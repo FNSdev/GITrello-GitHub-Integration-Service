@@ -34,9 +34,10 @@ pub async fn get_github_repositories(
 
     let mut response_data: Vec<GetGithubRepositoryResponse> = Vec::new();
     for repo in repositories {
+        let parts: Vec<&str> = repo.full_name.split("/").collect();
         response_data.push(GetGithubRepositoryResponse {
-            id: repo.id.to_string(),
-            name: repo.name,
+            name: parts[1].to_string(),
+            owner: parts[0].to_string()
         });
     }
 

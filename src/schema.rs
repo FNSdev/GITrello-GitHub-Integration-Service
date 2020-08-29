@@ -2,7 +2,8 @@ table! {
     board_repository (id) {
         id -> Int4,
         board_id -> Int8,
-        repository_id -> Int8,
+        repository_name -> Varchar,
+        repository_owner -> Varchar,
     }
 }
 
