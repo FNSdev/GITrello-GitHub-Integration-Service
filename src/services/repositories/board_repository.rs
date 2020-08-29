@@ -1,3 +1,4 @@
+use actix::{Actor, Context, Handler, Message};
 use diesel::{
     insert_into, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl,
     ExpressionMethods,
@@ -7,12 +8,12 @@ use crate::errors::GITrelloError;
 use crate::models::board_repository::{BoardRepository, NewBoardRepository};
 use crate::state::DbConnection;
 
-pub struct BoardRepositoryRepository<'a> {
-    connection: &'a DbConnection,
+pub struct BoardRepositoryRepository {
+    connection: DbConnection,
 }
 
-impl <'a> BoardRepositoryRepository<'a> {
-    pub fn new(connection: &'a DbConnection) -> Self {
+impl BoardRepositoryRepository {
+    pub fn new(connection: DbConnection) -> Self {
         Self { connection }
     }
 
@@ -21,7 +22,7 @@ impl <'a> BoardRepositoryRepository<'a> {
 
         insert_into(board_repository)
             .values(data)
-            .get_result(self.connection)
+            .get_result(&self.connection)
             .map_err(|source| {
                 match source {
                     Error::DatabaseError(DatabaseErrorKind::UniqueViolation, error_info) => {
@@ -37,7 +38,7 @@ impl <'a> BoardRepositoryRepository<'a> {
 
         table
             .filter(board_id_column.eq(board_id))
-            .first::<BoardRepository>(self.connection)
+            .first::<BoardRepository>(&self.connection)
             .map_err(|source| {
                 match source {
                     Error::NotFound => GITrelloError::NotFound {
@@ -60,7 +61,7 @@ impl <'a> BoardRepositoryRepository<'a> {
 
         update(board_repository)
             .set(repository_id_column.eq(repository_id))
-            .get_result::<BoardRepository>(self.connection)
+            .get_result::<BoardRepository>(&self.connection)
             .map_err(|source| {
                 match source {
                     Error::NotFound => GITrelloError::NotFound {
@@ -71,5 +72,67 @@ impl <'a> BoardRepositoryRepository<'a> {
                     _ => GITrelloError::DieselError { source }
                 }
             })
+    }
+}
+
+impl Actor for BoardRepositoryRepository {
+    type Context = Context<Self>;
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<BoardRepository, GITrelloError>")]
+pub struct CreateBoardRepositoryMessage {
+    pub data: NewBoardRepository,
+}
+
+impl Handler<CreateBoardRepositoryMessage> for BoardRepositoryRepository {
+    type Result = Result<BoardRepository, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: CreateBoardRepositoryMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.create(&msg.data)
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<BoardRepository, GITrelloError>")]
+pub struct GetBoardRepositoryByBoardIdMessage {
+    pub board_id: i64,
+}
+
+impl Handler<GetBoardRepositoryByBoardIdMessage> for BoardRepositoryRepository {
+    type Result = Result<BoardRepository, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: GetBoardRepositoryByBoardIdMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.get_by_board_id(msg.board_id)
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<BoardRepository, GITrelloError>")]
+pub struct UpdateRepositoryIdMessage {
+    pub board_repository: BoardRepository,
+    pub repository_id: i64,
+}
+
+impl Handler<UpdateRepositoryIdMessage> for BoardRepositoryRepository {
+    type Result = Result<BoardRepository, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: UpdateRepositoryIdMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.update_repository_id(&msg.board_repository, msg.repository_id)
     }
 }

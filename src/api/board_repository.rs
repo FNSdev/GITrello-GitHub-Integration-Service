@@ -1,10 +1,13 @@
+use actix::Actor;
 use actix_web::{web, HttpResponse, HttpRequest};
 
 use crate::entities::user::User;
-use crate::errors::ToGITrelloError;
-use crate::models::board_repository::NewBoardRepository;
+use crate::models::board_repository::{BoardRepository, NewBoardRepository};
 use crate::services::gitrello_api_client::GITRelloAPIClient;
-use crate::services::repositories::board_repository::BoardRepositoryRepository;
+use crate::services::repositories::board_repository::{
+    BoardRepositoryRepository, GetBoardRepositoryByBoardIdMessage, CreateBoardRepositoryMessage,
+    UpdateRepositoryIdMessage,
+};
 use crate::state::State;
 use crate::value_objects::request_data::board_repository::{
     GetBoardRepositoryQueryParams, NewBoardRepositoryRequest,
@@ -44,31 +47,24 @@ pub async fn create_board_repository(
     }
 
     let connection = state.get_db_connection()?;
-    let board_id = json.board_id.clone();
-    let board_repository = web::
-        block(
-            move || {
-                let repository = BoardRepositoryRepository::new(&connection);
-                repository.get_by_board_id(board_id)
-            }
-        )
+    let board_repository_actor = BoardRepositoryRepository::new(connection).start();
+    let board_repository: Result<BoardRepository, GITrelloError> = board_repository_actor
+        .send(GetBoardRepositoryByBoardIdMessage { board_id: json.board_id })
         .await
-        .map_err(|e| e.move_to_gitrello_error());
+        .map_err(|source| GITrelloError::ActorError { source })?;
 
     return match board_repository {
         Ok(board_repository) => {
             // todo update webhooks
 
-            let connection = state.get_db_connection()?;
-            let board_repository = web::
-                block(
-                    move || {
-                        let repository = BoardRepositoryRepository::new(&connection);
-                        repository.update_repository_id(&board_repository, json.repository_id)
-                    }
-                )
+            let message = UpdateRepositoryIdMessage {
+                board_repository,
+                repository_id: json.repository_id,
+            };
+            let board_repository: BoardRepository = board_repository_actor
+                .send(message)
                 .await
-                .map_err(|e| e.move_to_gitrello_error())?;
+                .map_err(|source| GITrelloError::ActorError { source })??;
 
             Ok(HttpResponse::Ok().json(BoardRepositoryResponse {
                 id: board_repository.id,
@@ -81,21 +77,15 @@ pub async fn create_board_repository(
                 GITrelloError::NotFound {message: _ } => {
                     // todo create webhooks
 
-                    let data = NewBoardRepository {
-                        board_id: json.board_id,
-                        repository_id: json.repository_id,
-                    };
-
-                    let connection = state.get_db_connection()?;
-                    let board_repository = web::
-                        block(
-                            move || {
-                                let repository = BoardRepositoryRepository::new(&connection);
-                                repository.create(&data)
-                            }
-                        )
+                    let board_repository: BoardRepository = board_repository_actor
+                        .send(CreateBoardRepositoryMessage {
+                            data: NewBoardRepository {
+                                board_id: json.board_id,
+                                repository_id: json.repository_id,
+                            },
+                        })
                         .await
-                        .map_err(|e| e.move_to_gitrello_error())?;
+                        .map_err(|source| GITrelloError::ActorError { source })??;
 
                     Ok(HttpResponse::Created().json(BoardRepositoryResponse {
                         id: board_repository.id,
@@ -121,8 +111,6 @@ pub async fn get_board_repository(
         return Err(GITrelloError::NotAuthenticated)
     }
 
-    let connection = state.get_db_connection()?;
-
     let gitrello_api_client = GITRelloAPIClient::new(state.gitrello_url.as_str());
     let board_permissions = gitrello_api_client
         .get_board_permissions(
@@ -139,15 +127,12 @@ pub async fn get_board_repository(
         return Err(GITrelloError::PermissionDenied);
     }
 
-    let board_repository = web::
-        block(
-            move || {
-                let repository = BoardRepositoryRepository::new(&connection);
-                repository.get_by_board_id(query_params.board_id)
-            }
-        )
+    let connection = state.get_db_connection()?;
+    let board_repository_actor = BoardRepositoryRepository::new(connection).start();
+    let board_repository: BoardRepository = board_repository_actor
+        .send(GetBoardRepositoryByBoardIdMessage { board_id: query_params.board_id })
         .await
-        .map_err(|e| e.move_to_gitrello_error())?;
+        .map_err(|source| GITrelloError::ActorError { source })??;
 
     Ok(HttpResponse::Ok().json(BoardRepositoryResponse {
         id: board_repository.id,

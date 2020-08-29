@@ -1,18 +1,18 @@
+use actix::{Actor, Context, Handler, Message};
 use diesel::{
     insert_into, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl, ExpressionMethods,
 };
-use diesel::r2d2::{ConnectionManager, PooledConnection};
-use diesel::PgConnection;
 
 use crate::errors::GITrelloError;
 use crate::models::github_profile::{GithubProfile, NewGithubProfile};
+use crate::state::DbConnection;
 
-pub struct GithubProfileRepository<'a> {
-    connection: &'a PooledConnection<ConnectionManager<PgConnection>>,
+pub struct GithubProfileRepository {
+    connection: DbConnection,
 }
 
-impl <'a> GithubProfileRepository<'a> {
-    pub fn new(connection: &'a PooledConnection<ConnectionManager<PgConnection>>) -> Self {
+impl GithubProfileRepository {
+    pub fn new(connection: DbConnection) -> Self {
         Self { connection }
     }
 
@@ -21,7 +21,7 @@ impl <'a> GithubProfileRepository<'a> {
 
         insert_into(github_profile)
             .values(data)
-            .get_result(self.connection)
+            .get_result(&self.connection)
             .map_err(|source| {
                 match source {
                     Error::DatabaseError (DatabaseErrorKind::UniqueViolation, error_info) => {
@@ -37,7 +37,7 @@ impl <'a> GithubProfileRepository<'a> {
 
         table
             .filter(user_id_column.eq(user_id))
-            .first::<GithubProfile>(self.connection)
+            .first::<GithubProfile>(&self.connection)
             .map_err(|source| {
                 match source {
                     Error::NotFound => GITrelloError::NotFound {
@@ -48,5 +48,47 @@ impl <'a> GithubProfileRepository<'a> {
                     _ => GITrelloError::DieselError { source }
                 }
             })
+    }
+}
+
+impl Actor for GithubProfileRepository {
+    type Context = Context<Self>;
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<GithubProfile, GITrelloError>")]
+pub struct CreateGithubProfileMessage {
+    pub data: NewGithubProfile,
+}
+
+impl Handler<CreateGithubProfileMessage> for GithubProfileRepository {
+    type Result = Result<GithubProfile, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: CreateGithubProfileMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.create(&msg.data)
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<GithubProfile, GITrelloError>")]
+pub struct GetGithubProfileByUserIdMessage {
+    pub user_id: i64,
+}
+
+impl Handler<GetGithubProfileByUserIdMessage> for GithubProfileRepository {
+    type Result = Result<GithubProfile, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: GetGithubProfileByUserIdMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.get_by_user_id(msg.user_id)
     }
 }

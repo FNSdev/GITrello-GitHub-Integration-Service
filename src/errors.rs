@@ -1,7 +1,7 @@
 use std::fmt;
 
+use actix::MailboxError;
 use actix_http::{ResponseBuilder, http};
-use actix_threadpool::BlockingError;
 use actix_web::{error, HttpResponse};
 use diesel;
 use r2d2;
@@ -14,25 +14,12 @@ struct ErrorResponse {
     pub error_code: i16,
 }
 
-pub trait ToGITrelloError {
-    fn move_to_gitrello_error(self) -> GITrelloError;
-}
-
-impl ToGITrelloError for BlockingError<GITrelloError> {
-    fn move_to_gitrello_error(self) -> GITrelloError {
-        match self {
-            BlockingError::Error(e) => {
-                e
-            }
-            BlockingError::Canceled => {
-                GITrelloError::InternalError
-            }
-        }
-    }
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum GITrelloError {
+    ActorError {
+        #[from]
+        source: MailboxError,
+    },
     DieselError {
         #[from]
         source: diesel::result::Error,
@@ -65,6 +52,7 @@ pub enum GITrelloError {
 impl fmt::Display for GITrelloError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::ActorError { source} => write!(f, "{}", source.to_string()),
             Self::DieselError { source} => write!(f, "{}", source.to_string()),
             Self::R2D2Error { source} => write!(f, "{}", source.to_string()),
             Self::HttpRequestError { source } => write!(f, "{}", source.to_string()),
@@ -104,6 +92,7 @@ impl error::ResponseError for GITrelloError {
             Self::NotFound { message: _ } => 107,
             Self::GITrelloAPIClientError { message: _ } => 108,
             Self::PermissionDenied => 109,
+            Self::ActorError { source: _ } => 110,
         };
 
         ResponseBuilder::new(self.status_code())

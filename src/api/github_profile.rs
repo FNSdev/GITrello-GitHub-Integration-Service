@@ -1,10 +1,12 @@
+use actix::Actor;
 use actix_web::{web, HttpResponse, HttpRequest};
 
 use crate::entities::user::User;
-use crate::errors::ToGITrelloError;
-use crate::models::github_profile::NewGithubProfile;
+use crate::models::github_profile::{NewGithubProfile, GithubProfile};
 use crate::services::github_api_client::GitHubAPIClient;
-use crate::services::repositories::github_profile::GithubProfileRepository;
+use crate::services::repositories::github_profile::{
+    GithubProfileRepository, CreateGithubProfileMessage, GetGithubProfileByUserIdMessage,
+};
 use crate::state::State;
 use crate::value_objects::request_data::github_profile::NewGithubProfileRequest;
 use crate::value_objects::response_data::github_profile::GithubProfileResponse;
@@ -22,8 +24,6 @@ pub async fn create_github_profile(
         return Err(GITrelloError::NotAuthenticated)
     }
 
-    let connection = state.get_db_connection()?;
-
     let github_api_client = GitHubAPIClient::new(json.access_token.as_str());
     let github_user_result = github_api_client.get_user().await;
 
@@ -39,14 +39,12 @@ pub async fn create_github_profile(
         access_token: String::from(&json.access_token),
     };
 
-    let github_profile = web::block(
-            move || {
-                let repository = GithubProfileRepository::new(&connection);
-                repository.create(&data)
-            }
-        )
+    let connection = state.get_db_connection()?;
+    let repository_actor = GithubProfileRepository::new(connection).start();
+    let github_profile: GithubProfile = repository_actor
+        .send(CreateGithubProfileMessage { data })
         .await
-        .map_err(|e| e.move_to_gitrello_error())?;
+        .map_err(|source| GITrelloError::ActorError { source })??;
 
     Ok(HttpResponse::Created().json(github_profile))
 }
@@ -63,17 +61,11 @@ pub async fn get_github_profile(
     }
 
     let connection = state.get_db_connection()?;
-
-    let github_profile = web::block(
-            move || {
-                let repository = GithubProfileRepository::new(&connection);
-                repository.get_by_user_id(
-                    user.id.expect("is_authenticated() must be checked earlier"),
-                )
-            }
-        )
+    let repository_actor = GithubProfileRepository::new(connection).start();
+    let github_profile: GithubProfile = repository_actor
+        .send(GetGithubProfileByUserIdMessage { user_id: user.id.expect("already checked") })
         .await
-        .map_err(|e| e.move_to_gitrello_error())?;
+        .map_err(|source| GITrelloError::ActorError { source })??;
 
     Ok(HttpResponse::Ok().json(GithubProfileResponse {
         id: github_profile.id,
