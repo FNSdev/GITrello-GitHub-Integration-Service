@@ -26,10 +26,12 @@ impl<'a> BoardRepositoryService<'a> {
     }
 
     pub async fn get_by_board_id(&self, board_id: i64) -> Result<BoardRepository, GITrelloError> {
-        self.actor
-            .send(GetBoardRepositoryByBoardIdMessage { board_id })
-            .await
-            .map_err(|source| GITrelloError::ActorError { source })?
+        let permissions = self.get_permissions(board_id).await?;
+        if !permissions.can_read {
+            return Err(GITrelloError::PermissionDenied);
+        }
+
+        self.get(board_id).await
     }
 
     pub async fn create_or_update(
@@ -44,7 +46,7 @@ impl<'a> BoardRepositoryService<'a> {
             return Err(GITrelloError::PermissionDenied);
         }
 
-        let board_repository = self.get_by_board_id(board_id).await;
+        let board_repository = self.get(board_id).await;
         return match board_repository {
             Ok(board_repository) => {
                 // todo update webhooks
@@ -81,6 +83,13 @@ impl<'a> BoardRepositoryService<'a> {
                 board_id,
             )
             .await
+    }
+
+    async fn get(&self, board_id: i64) -> Result<BoardRepository, GITrelloError> {
+        self.actor
+            .send(GetBoardRepositoryByBoardIdMessage { board_id })
+            .await
+            .map_err(|source| GITrelloError::ActorError { source })?
     }
 
     async fn create(
