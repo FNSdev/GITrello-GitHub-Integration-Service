@@ -126,18 +126,18 @@ impl Handler<GetBoardRepositoryByBoardIdMessage> for BoardRepositoryRepository {
 
 #[derive(Message)]
 #[rtype(result = "Result<BoardRepository, GITrelloError>")]
-pub struct UpdateRepositoryIdMessage {
+pub struct UpdateRepositoryDataMessage {
     pub board_repository: BoardRepository,
     pub repository_name: String,
     pub repository_owner: String,
 }
 
-impl Handler<UpdateRepositoryIdMessage> for BoardRepositoryRepository {
+impl Handler<UpdateRepositoryDataMessage> for BoardRepositoryRepository {
     type Result = Result<BoardRepository, GITrelloError>;
 
     fn handle(
         &mut self,
-        msg: UpdateRepositoryIdMessage,
+        msg: UpdateRepositoryDataMessage,
         _ctx: &mut Self::Context,
     ) -> Self::Result
     {
