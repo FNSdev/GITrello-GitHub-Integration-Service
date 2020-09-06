@@ -17,7 +17,19 @@ table! {
     }
 }
 
+table! {
+    github_webhook (id) {
+        id -> Int4,
+        webhook_id -> Int8,
+        url -> Varchar,
+        board_repository_id -> Int4,
+    }
+}
+
+joinable!(github_webhook -> board_repository (board_repository_id));
+
 allow_tables_to_appear_in_same_query!(
     board_repository,
     github_profile,
+    github_webhook,
 );

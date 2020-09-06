@@ -22,6 +22,7 @@ pub struct State {
     pub db_pool: DbPool,
     pub secret: String,
     pub gitrello_url: String,
+    pub webhook_url: String,
 }
 
 impl State {
@@ -70,6 +71,7 @@ pub fn get_state() -> State {
         db_pool,
         secret: env::var("SECRET").expect("SECRET"),
         gitrello_url: env::var("GITRELLO_URL").expect("GITRELLO_URL"),
+        webhook_url: env::var("WEBHOOK_URL").expect("WEBHOOK_URL"),
     };
     state
 }

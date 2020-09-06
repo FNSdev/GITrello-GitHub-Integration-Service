@@ -4,6 +4,7 @@ use actix_web::{web};
 use crate::entities::user::User;
 use crate::errors::GITrelloError;
 use crate::models::board_repository::{BoardRepository, NewBoardRepository};
+use crate::services::github_webhook_service::GithubWebhookService;
 use crate::services::gitrello_api_client::GITRelloAPIClient;
 use crate::services::repositories::board_repository::{
     BoardRepositoryRepository, CreateBoardRepositoryMessage, GetBoardRepositoryByBoardIdMessage,
@@ -49,7 +50,10 @@ impl<'a> BoardRepositoryService<'a> {
         let board_repository = self.get(board_id).await;
         return match board_repository {
             Ok(board_repository) => {
-                // todo update webhooks
+                let github_webhook_service = GithubWebhookService::new(self.state, self.user).await?;
+                github_webhook_service
+                    .update(&board_repository, repository_name, repository_owner)
+                    .await?;
 
                 self
                     .update_repository_data(board_repository, repository_name, repository_owner)
@@ -59,12 +63,16 @@ impl<'a> BoardRepositoryService<'a> {
             Err(e) => {
                 match e {
                     GITrelloError::NotFound {message: _ } => {
-                        // todo create webhooks
-
-                        self
+                        let board_repository = self
                             .create(board_id, repository_name, repository_owner)
-                            .await
-                            .map(|board_repository| (board_repository, true))
+                            .await?;
+
+                        let github_webhook_service = GithubWebhookService::new(self.state, self.user).await?;
+                        github_webhook_service
+                            .create(&board_repository)
+                            .await?;
+
+                        Ok((board_repository, true))
                     },
                     _ => Err(e)
                 }
