@@ -52,7 +52,7 @@ impl<'a> BoardRepositoryService<'a> {
             Ok(board_repository) => {
                 let github_webhook_service = GithubWebhookService::new(self.state, self.user).await?;
                 github_webhook_service
-                    .update(&board_repository, repository_name, repository_owner)
+                    .create_or_update(&board_repository, repository_name, repository_owner)
                     .await?;
 
                 self
@@ -69,7 +69,7 @@ impl<'a> BoardRepositoryService<'a> {
 
                         let github_webhook_service = GithubWebhookService::new(self.state, self.user).await?;
                         github_webhook_service
-                            .create(&board_repository)
+                            .create_or_update(&board_repository, repository_name, repository_owner)
                             .await?;
 
                         Ok((board_repository, true))

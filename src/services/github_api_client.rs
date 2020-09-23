@@ -109,7 +109,7 @@ impl GitHubAPIClient {
     }
 
     pub async fn get_repositories(&self) -> Result<Vec<Repository>, GITrelloError> {
-        let url = format!("{}/user/repos", GITHUB_API_URL);
+        let url = format!("{}/user/repos?affiliation=owner", GITHUB_API_URL);
 
         let response = Client::new()
             .get(&url)

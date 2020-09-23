@@ -10,7 +10,8 @@ use crate::models::board_repository::BoardRepository;
 use crate::services::github_api_client::GitHubAPIClient;
 use crate::services::github_profile_service::GithubProfileService;
 use crate::services::repositories::github_webhook::{
-    CreateOrUpdateGithubWebhookMessage, GetByBoardRepositoryIdMessage, GithubWebhookRepository,
+    CreateGithubWebhookMessage, GetByBoardRepositoryIdMessage, GithubWebhookRepository,
+    UpdateWebhookIdMessage,
 };
 use crate::state::State;
 
@@ -37,36 +38,67 @@ impl<'a> GithubWebhookService<'a> {
         Ok(Self { actor, state, github_profile })
     }
 
-    pub async fn create(
-        &self,
-        board_repository: &BoardRepository,
-    ) -> Result<GithubWebhook, GITrelloError>
-    {
-        let github_api_client = GitHubAPIClient::new(self.github_profile.access_token.as_str());
-        let webhook = github_api_client
-            .create_webhook(
-                board_repository.repository_name.as_str(),
-                board_repository.repository_owner.as_str(),
-                self.state.webhook_url.as_str(),
-            )
-            .await?;
-
-        self
-            .create_or_update(webhook.id, board_repository.id, self.state.webhook_url.as_str())
-            .await
-    }
-
-    pub async fn update(
+    pub async fn create_or_update(
         &self,
         board_repository: &BoardRepository,
         repository_name: &str,
         repository_owner: &str,
     ) -> Result<GithubWebhook, GITrelloError>
     {
-        let github_api_client = GitHubAPIClient::new(self.github_profile.access_token.as_str());
         let github_webhook = self
             .get_by_board_repository_id(board_repository.id)
+            .await;
+
+        match github_webhook {
+            Ok(github_webhook) => {
+                self.update(github_webhook, board_repository, repository_name, repository_owner).await
+            },
+            Err(e) => {
+                match e {
+                    GITrelloError::NotFound { message: _} => {
+                        self.create(board_repository, repository_name, repository_owner).await
+                    },
+                    _ => Err(e)
+                }
+            }
+        }
+    }
+
+    async fn create(
+        &self,
+        board_repository: &BoardRepository,
+        repository_name: &str,
+        repository_owner: &str,
+    ) -> Result<GithubWebhook, GITrelloError> {
+        let github_api_client = GitHubAPIClient::new(self.github_profile.access_token.as_str());
+        let webhook = github_api_client
+            .create_webhook(
+                repository_name,
+                repository_owner,
+                self.state.webhook_url.as_str(),
+            )
             .await?;
+
+        let data = NewGithubWebhook {
+            webhook_id: webhook.id,
+            board_repository_id: board_repository.id,
+            url: self.state.webhook_url.clone(),
+        };
+
+        self.actor
+            .send(CreateGithubWebhookMessage { data })
+            .await
+            .map_err(|source| GITrelloError::ActorError { source })?
+    }
+
+    async fn update(
+        &self,
+        github_webhook: GithubWebhook,
+        board_repository: &BoardRepository,
+        repository_name: &str,
+        repository_owner: &str,
+    ) -> Result<GithubWebhook, GITrelloError> {
+        let github_api_client = GitHubAPIClient::new(self.github_profile.access_token.as_str());
 
         let delete_old_webhook_future = github_api_client
             .delete_webhook(
@@ -81,25 +113,12 @@ impl<'a> GithubWebhookService<'a> {
                 self.state.webhook_url.as_str(),
             );
 
-        let results = futures::try_join!(delete_old_webhook_future, create_new_webhook_future)?;
-        let new_webhook = results.1;
-
-        self
-            .create_or_update(new_webhook.id, board_repository.id, self.state.webhook_url.as_str())
-            .await
-    }
-
-    async fn create_or_update(
-        &self,
-        webhook_id: i64,
-        board_repository_id: i32,
-        url: &str,
-    ) -> Result<GithubWebhook, GITrelloError>
-    {
-        let data = NewGithubWebhook {webhook_id, board_repository_id, url: url.to_string() };
+        // Note: there is no need to return Err if old webhook was not deleted for some reason
+        let results = futures::join!(delete_old_webhook_future, create_new_webhook_future);
+        let new_webhook = results.1?;
 
         self.actor
-            .send(CreateOrUpdateGithubWebhookMessage { data })
+            .send(UpdateWebhookIdMessage { github_webhook, webhook_id: new_webhook.id })
             .await
             .map_err(|source| GITrelloError::ActorError { source })?
     }
