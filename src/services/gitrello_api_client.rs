@@ -4,7 +4,7 @@ use serde::de::DeserializeOwned;
 use serde_json;
 
 use crate::errors::GITrelloError;
-use crate::value_objects::gitrello_api::{APIError, BoardPermissions, GetBoardPermissionsRequest};
+use crate::value_objects::gitrello_api::{APIError, Permissions, GetBoardPermissionsRequest};
 
 pub struct GITRelloAPIClient<'a> {
     gitrello_url: &'a str,
@@ -92,7 +92,7 @@ impl<'a> GITRelloAPIClient<'a> {
         &self,
         user_id: i64,
         board_id: i64,
-    ) -> Result<BoardPermissions, GITrelloError>
+    ) -> Result<Permissions, GITrelloError>
     {
         let url = format!("{}/{}", self.gitrello_url, "api/v1/board-permissions");
 
@@ -103,6 +103,6 @@ impl<'a> GITRelloAPIClient<'a> {
             .send()
             .await;
 
-        self.process_response::<BoardPermissions>(response, StatusCode::OK).await
+        self.process_response::<Permissions>(response, StatusCode::OK).await
     }
 }

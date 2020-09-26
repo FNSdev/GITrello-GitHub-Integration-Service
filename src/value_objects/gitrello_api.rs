@@ -13,7 +13,8 @@ pub struct GetBoardPermissionsRequest {
 }
 
 #[derive(Deserialize)]
-pub struct BoardPermissions {
+pub struct Permissions {
     pub can_read: bool,
-    pub can_mutate: bool
+    pub can_mutate: bool,
+    pub can_delete: bool,
 }

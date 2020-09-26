@@ -11,7 +11,7 @@ use crate::services::repositories::board_repository::{
     UpdateRepositoryDataMessage,
 };
 use crate::state::State;
-use crate::value_objects::gitrello_api::BoardPermissions;
+use crate::value_objects::gitrello_api::Permissions;
 
 pub struct BoardRepositoryService<'a> {
     state: &'a web::Data<State>,
@@ -80,7 +80,7 @@ impl<'a> BoardRepositoryService<'a> {
         };
     }
 
-    async fn get_permissions(&self, board_id: i64) -> Result<BoardPermissions, GITrelloError> {
+    async fn get_permissions(&self, board_id: i64) -> Result<Permissions, GITrelloError> {
         let gitrello_api_client = GITRelloAPIClient::new(
             self.state.gitrello_url.as_str(),
         );
