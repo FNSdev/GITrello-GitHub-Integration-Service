@@ -57,5 +57,5 @@ pub async fn get_github_profile(
         github_login: github_profile.github_login
     };
 
-    Ok(HttpResponse::Created().json(response_data))
+    Ok(HttpResponse::Ok().json(response_data))
 }

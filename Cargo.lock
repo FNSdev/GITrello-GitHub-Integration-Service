@@ -850,6 +850,7 @@ dependencies = [
  "actix-service",
  "actix-threadpool",
  "actix-web",
+ "bytes",
  "diesel",
  "dotenv",
  "futures",

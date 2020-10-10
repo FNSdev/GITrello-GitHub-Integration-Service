@@ -18,6 +18,13 @@ pub struct Repository {
     pub full_name: String,
 }
 
+impl Repository {
+    pub fn split_full_name(&self) -> (&str, &str) {
+        let parts: Vec<&str> = self.full_name.splitn(2, "/").collect();
+        (parts[0], parts[1])
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Webhook {
     pub id: i64,
@@ -33,4 +40,12 @@ pub struct CreateWebhook {
 pub struct CreateWebhookConfig {
     pub url: String,
     pub content_type: String,
+}
+
+
+#[derive(Deserialize, Debug)]
+pub struct Issue {
+    pub html_url: String,
+    pub title: String,
+    pub body: String,
 }

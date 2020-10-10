@@ -14,7 +14,8 @@ impl GithubWebhookRepository {
         Self { connection }
     }
 
-    pub fn create(&self, data: &NewGithubWebhook) -> Result<GithubWebhook, GITrelloError> {
+    pub fn create(&self, data: &NewGithubWebhook) -> Result<GithubWebhook, GITrelloError>
+    {
         use crate::schema::github_webhook::dsl::*;
 
         insert_into(github_webhook)
@@ -27,7 +28,8 @@ impl GithubWebhookRepository {
         &self,
         github_webhook: &GithubWebhook,
         webhook_id: i64,
-    ) -> Result<GithubWebhook, GITrelloError> {
+    ) -> Result<GithubWebhook, GITrelloError>
+    {
         use crate::schema::github_webhook::{webhook_id as webhook_id_column};
 
         update(github_webhook)

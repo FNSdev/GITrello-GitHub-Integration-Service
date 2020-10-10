@@ -1,8 +1,5 @@
 use actix::{Actor, Context, Handler, Message};
-use diesel::{
-    insert_into, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl,
-    ExpressionMethods,
-};
+use diesel::{insert_into, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl, ExpressionMethods, BoolExpressionMethods};
 
 use crate::errors::GITrelloError;
 use crate::models::board_repository::{BoardRepository, NewBoardRepository};
@@ -49,6 +46,25 @@ impl BoardRepositoryRepository {
                     _ => GITrelloError::DieselError { source }
                 }
             })
+    }
+
+    pub fn get_by_repository_owner_and_name(
+        &self,
+        repository_owner: &str,
+        repository_name: &str,
+    ) -> Result<Vec<BoardRepository>, GITrelloError>
+    {
+        use crate::schema::board_repository::{
+            table, repository_owner as repository_owner_column, repository_name as repository_name_column,
+        };
+
+        table
+            .filter(
+                repository_owner_column.eq(repository_owner)
+                    .and(repository_name_column.eq(repository_name)),
+            )
+            .load::<BoardRepository>(&self.connection)
+            .map_err(|source| GITrelloError::DieselError { source })
     }
 
     pub fn update_repository_data(
@@ -146,5 +162,25 @@ impl Handler<UpdateRepositoryDataMessage> for BoardRepositoryRepository {
             msg.repository_name.as_str(),
             msg.repository_owner.as_str(),
         )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<BoardRepository>, GITrelloError>")]
+pub struct GetBoardRepositoryByRepositoryOwnerAndNameMessage {
+    pub repository_owner: String,
+    pub repository_name: String,
+}
+
+impl Handler<GetBoardRepositoryByRepositoryOwnerAndNameMessage> for BoardRepositoryRepository {
+    type Result = Result<Vec<BoardRepository>, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: GetBoardRepositoryByRepositoryOwnerAndNameMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.get_by_repository_owner_and_name(msg.repository_owner.as_str(), msg.repository_name.as_str())
     }
 }

@@ -38,6 +38,7 @@ async fn main() -> std::io::Result<()> {
             .service(api::github_profile::create_github_profile)
             .service(api::github_profile::get_github_profile)
             .service(api::github_repository::get_github_repositories)
+            .service(api::github_webhook::github_webhook)
     })
     .bind("127.0.0.1:8001")?
     .run()
