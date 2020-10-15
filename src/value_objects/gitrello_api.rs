@@ -18,3 +18,10 @@ pub struct Permissions {
     pub can_mutate: bool,
     pub can_delete: bool,
 }
+
+#[derive(Serialize, Debug)]
+pub struct CreateTicketRequest {
+    pub board_id: i64,
+    pub title: String,
+    pub body: String,
+}

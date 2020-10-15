@@ -1,10 +1,12 @@
-use reqwest::header::{HeaderMap, HeaderValue,  AUTHORIZATION, USER_AGENT};
+use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use reqwest::{Client, Error, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use serde_json;
 
 use crate::errors::GITrelloError;
-use crate::value_objects::gitrello_api::{APIError, Permissions, GetBoardPermissionsRequest};
+use crate::value_objects::gitrello_api::{
+    APIError, Permissions, GetBoardPermissionsRequest, CreateTicketRequest,
+};
 
 pub struct GITRelloAPIClient<'a> {
     gitrello_url: &'a str,
@@ -25,13 +27,11 @@ impl<'a> GITRelloAPIClient<'a> {
     }
 
     pub fn with_access_token(gitrello_url: &'a str, access_token: &str) -> Self {
-        let authorization_header_value = HeaderValue::from_str(
-                format!("Token {}", access_token).as_str(),
-            )
+        let authorization_header_value = HeaderValue::from_str(access_token)
             .expect("Authorization header should be valid");
 
         let mut service = Self::new(gitrello_url);
-        service.headers.insert(AUTHORIZATION, authorization_header_value);
+        service.headers.insert("GITHUB_INTEGRATION_SERVICE_TOKEN", authorization_header_value);
         service
     }
 
@@ -39,18 +39,24 @@ impl<'a> GITRelloAPIClient<'a> {
         &self,
         response: Result<Response, Error>,
         expected_status_code: StatusCode
-    ) -> Result<T, GITrelloError>
+    ) -> Result<Option<T>, GITrelloError>
         where T: DeserializeOwned
     {
         match response {
             Ok(response) => {
                 if response.status() == expected_status_code {
-                    let github_user = response.json::<T>().await;
+                    if expected_status_code == StatusCode::NO_CONTENT {
+                        return Ok(None);
+                    }
+
+                    let json = response.json::<T>().await;
 
                     // Response with valid code
-                    github_user.map_err(|source| GITrelloError::GitHubAPIClientError {
-                        message: source.to_string(),
-                    })
+                    json
+                        .map(|json| Some(json))
+                        .map_err(|source| GITrelloError::GitHubAPIClientError {
+                            message: source.to_string(),
+                        })
                 }
                 else {
                     let response_string = response.text().await;
@@ -103,6 +109,33 @@ impl<'a> GITRelloAPIClient<'a> {
             .send()
             .await;
 
-        self.process_response::<Permissions>(response, StatusCode::OK).await
+        let result = self.process_response::<Permissions>(response, StatusCode::OK).await;
+        match result {
+            Ok(result) => Ok(result.expect("can not be None")),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn create_ticket(
+        &self,
+        board_id: i64,
+        title: &str,
+        body: &str,
+    ) -> Result<(), GITrelloError>
+    {
+        let url = format!("{}/{}", self.gitrello_url, "oauth/api/v1/tickets");
+
+        let response = Client::new()
+            .post(&url)
+            .json(&CreateTicketRequest {board_id, title: title.to_string(), body: body.to_string() })
+            .headers(self.headers.clone())
+            .send()
+            .await;
+
+        let result = self.process_response::<()>(response, StatusCode::OK).await;
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 }

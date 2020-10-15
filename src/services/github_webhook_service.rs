@@ -11,6 +11,7 @@ use crate::models::github_webhook::{GithubWebhook, NewGithubWebhook};
 use crate::models::board_repository::BoardRepository;
 use crate::services::github_api_client::GitHubAPIClient;
 use crate::services::github_profile_service::GithubProfileService;
+use crate::services::gitrello_api_client::GITRelloAPIClient;
 use crate::services::repositories::board_repository::{
     BoardRepositoryRepository, GetBoardRepositoryByRepositoryOwnerAndNameMessage,
 };
@@ -87,6 +88,14 @@ impl<'a> GithubWebhookService<'a> {
             )
             .await?;
 
+        // TODO
+        // We can not create two webhooks with same config for one repository,
+        //
+        // So we need to create new GithubWebhook with the same `webhook_id` without actually
+        // calling Github API.
+        //
+        // We also must not delete webhook when updating a single BoardRepository, if this webhook
+        // is being used by several BoardRepositories
         let data = NewGithubWebhook {
             webhook_id: webhook.id,
             board_repository_id: board_repository.id,
@@ -109,6 +118,14 @@ impl<'a> GithubWebhookService<'a> {
     {
         let github_api_client = GitHubAPIClient::new(self.github_profile.access_token.as_str());
 
+        // TODO
+        // We can not create two webhooks with same config for one repository,
+        //
+        // So we need to create new GithubWebhook with the same `webhook_id` without actually
+        // calling Github API.
+        //
+        // We also must not delete webhook when updating a single BoardRepository, if this webhook
+        // is being used by several BoardRepositories
         let delete_old_webhook_future = github_api_client
             .delete_webhook(
                 board_repository.repository_name.as_str(),
@@ -188,12 +205,23 @@ impl<'a> GithubWebhookProcessingService<'a> {
             .await
             .map_err(|source| GITrelloError::ActorError { source })??;
 
+        let gitrello_api_client = GITRelloAPIClient::with_access_token(
+            &self.state.gitrello_url,
+            &self.state.gitrello_access_token,
+        );
+
+        let mut create_ticket_futures = Vec::new();
         for board_repository in board_repositories.iter() {
-            // TODO
-            dbg!(board_repository);
+            create_ticket_futures.push(
+                gitrello_api_client.create_ticket(
+                    board_repository.board_id,
+                    issue.title.as_str(),
+                    issue.body.as_str(),
+                ),
+            );
         }
 
-        dbg!(issue);
+        futures::future::join_all(create_ticket_futures).await;
 
         Ok(())
     }
