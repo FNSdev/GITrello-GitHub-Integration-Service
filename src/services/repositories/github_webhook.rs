@@ -1,5 +1,5 @@
 use actix::{Actor, Context, Handler, Message};
-use diesel::{insert_into, update, result::Error, ExpressionMethods, QueryDsl, RunQueryDsl};
+use diesel::{insert_into, update, result::Error, BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl};
 
 use crate::errors::GITrelloError;
 use crate::models::github_webhook::{GithubWebhook, NewGithubWebhook};
@@ -47,23 +47,32 @@ impl GithubWebhookRepository {
             })
     }
 
-    pub fn get_by_board_repository_id(
+    pub fn get_by_repository_name_and_owner(
         &self,
-        board_repository_id: i32,
-    ) -> Result<GithubWebhook, GITrelloError>
+        repository_name: &str,
+        repository_owner: &str,
+    ) -> Result<Vec<GithubWebhook>, GITrelloError>
     {
-        use crate::schema::github_webhook::{
-            table, board_repository_id as board_repository_id_column,
-        };
+        use crate::schema::github_webhook;
+        use crate::schema::board_repository;
 
-        table
-            .filter(board_repository_id_column.eq(board_repository_id))
-            .first::<GithubWebhook>(&self.connection)
+        github_webhook::table
+            .select(github_webhook::all_columns)
+            .inner_join(board_repository::table)
+            .filter(
+                board_repository::repository_name.eq(repository_name)
+                    .and(board_repository::repository_owner.eq(repository_owner)),
+            )
+            .load::<GithubWebhook>(&self.connection)
             .map_err(|source| {
                 match source {
                     Error::NotFound => GITrelloError::NotFound {
                         message: String::from(
-                            format!("github_webhook for board_repository {} does not exist", board_repository_id),
+                            format!(
+                                "github_webhook for repository {}/{} does not exist",
+                                repository_name,
+                                repository_owner,
+                            ),
                         )
                     },
                     _ => GITrelloError::DieselError { source }
@@ -116,20 +125,24 @@ impl Handler<UpdateWebhookIdMessage> for GithubWebhookRepository {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<GithubWebhook, GITrelloError>")]
-pub struct GetByBoardRepositoryIdMessage {
-    pub board_repository_id: i32,
+#[rtype(result = "Result<Vec<GithubWebhook>, GITrelloError>")]
+pub struct GetByRepositoryNameAndOwnerMessage {
+    pub repository_name: String,
+    pub repository_owner: String,
 }
 
-impl Handler<GetByBoardRepositoryIdMessage> for GithubWebhookRepository {
-    type Result = Result<GithubWebhook, GITrelloError>;
+impl Handler<GetByRepositoryNameAndOwnerMessage> for GithubWebhookRepository {
+    type Result = Result<Vec<GithubWebhook>, GITrelloError>;
 
     fn handle(
         &mut self,
-        msg: GetByBoardRepositoryIdMessage,
+        msg: GetByRepositoryNameAndOwnerMessage,
         _ctx: &mut Self::Context,
     ) -> Self::Result
     {
-        self.get_by_board_repository_id(msg.board_repository_id)
+        self.get_by_repository_name_and_owner(
+            msg.repository_name.as_str(),
+            msg.repository_owner.as_str(),
+        )
     }
 }

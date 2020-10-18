@@ -1,5 +1,8 @@
 use actix::{Actor, Context, Handler, Message};
-use diesel::{insert_into, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl, ExpressionMethods, BoolExpressionMethods};
+use diesel::{
+    insert_into, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl, ExpressionMethods,
+    BoolExpressionMethods,
+};
 
 use crate::errors::GITrelloError;
 use crate::models::board_repository::{BoardRepository, NewBoardRepository};
