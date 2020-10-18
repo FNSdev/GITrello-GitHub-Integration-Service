@@ -50,6 +50,11 @@ impl<'a> BoardRepositoryService<'a> {
         let board_repository = self.get(board_id).await;
         return match board_repository {
             Ok(board_repository) => {
+                if board_repository.repository_name == repository_name &&
+                        board_repository.repository_owner == repository_owner {
+                    return Ok((board_repository, false));
+                }
+
                 let github_webhook_service = GithubWebhookService::new(self.state, self.user).await?;
                 github_webhook_service
                     .create_or_update(&board_repository, repository_name, repository_owner)
