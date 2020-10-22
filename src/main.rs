@@ -35,6 +35,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .service(api::board_repository::create_or_update_board_repository)
             .service(api::board_repository::get_board_repository)
+            .service(api::board_repository::delete_board_repository)
             .service(api::github_profile::create_github_profile)
             .service(api::github_profile::get_github_profile)
             .service(api::github_repository::get_github_repositories)

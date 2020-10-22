@@ -1,7 +1,7 @@
 use actix::{Actor, Context, Handler, Message};
 use diesel::{
-    insert_into, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl, ExpressionMethods,
-    BoolExpressionMethods,
+    insert_into, delete, update, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl,
+    ExpressionMethods, BoolExpressionMethods,
 };
 
 use crate::errors::GITrelloError;
@@ -27,6 +27,24 @@ impl BoardRepositoryRepository {
                 match source {
                     Error::DatabaseError(DatabaseErrorKind::UniqueViolation, error_info) => {
                         GITrelloError::AlreadyExists { message: String::from(error_info.message()) }
+                    },
+                    _ => GITrelloError::DieselError { source }
+                }
+            })
+    }
+
+    pub fn get_by_id(&self, id: i32) -> Result<BoardRepository, GITrelloError> {
+        use crate::schema::board_repository::{table, id as id_column};
+
+        table
+            .filter(id_column.eq(id))
+            .first::<BoardRepository>(&self.connection)
+            .map_err(|source| {
+                match source {
+                    Error::NotFound => GITrelloError::NotFound {
+                        message: String::from(
+                            format!("board_repository {} does not exist", id),
+                        )
                     },
                     _ => GITrelloError::DieselError { source }
                 }
@@ -99,6 +117,13 @@ impl BoardRepositoryRepository {
                 }
             })
     }
+
+    pub fn delete(&self, id: i32) -> Result<(), GITrelloError> {
+        use crate::schema::board_repository::{table, id as id_column};
+
+        delete(table.filter(id_column.eq(id))).execute(&self.connection)?;
+        Ok(())
+    }
 }
 
 impl Actor for BoardRepositoryRepository {
@@ -126,6 +151,25 @@ impl Handler<CreateBoardRepositoryMessage> for BoardRepositoryRepository {
 
 #[derive(Message)]
 #[rtype(result = "Result<BoardRepository, GITrelloError>")]
+pub struct GetBoardRepositoryByIdMessage {
+    pub id: i32,
+}
+
+impl Handler<GetBoardRepositoryByIdMessage> for BoardRepositoryRepository {
+    type Result = Result<BoardRepository, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: GetBoardRepositoryByIdMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.get_by_id(msg.id)
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<BoardRepository, GITrelloError>")]
 pub struct GetBoardRepositoryByBoardIdMessage {
     pub board_id: i64,
 }
@@ -140,6 +184,26 @@ impl Handler<GetBoardRepositoryByBoardIdMessage> for BoardRepositoryRepository {
     ) -> Self::Result
     {
         self.get_by_board_id(msg.board_id)
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<BoardRepository>, GITrelloError>")]
+pub struct GetBoardRepositoryByRepositoryOwnerAndNameMessage {
+    pub repository_owner: String,
+    pub repository_name: String,
+}
+
+impl Handler<GetBoardRepositoryByRepositoryOwnerAndNameMessage> for BoardRepositoryRepository {
+    type Result = Result<Vec<BoardRepository>, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: GetBoardRepositoryByRepositoryOwnerAndNameMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.get_by_repository_owner_and_name(msg.repository_owner.as_str(), msg.repository_name.as_str())
     }
 }
 
@@ -169,21 +233,20 @@ impl Handler<UpdateRepositoryDataMessage> for BoardRepositoryRepository {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Vec<BoardRepository>, GITrelloError>")]
-pub struct GetBoardRepositoryByRepositoryOwnerAndNameMessage {
-    pub repository_owner: String,
-    pub repository_name: String,
+#[rtype(result = "Result<(), GITrelloError>")]
+pub struct DeleteBoardRepositoryMessage {
+    pub id: i32,
 }
 
-impl Handler<GetBoardRepositoryByRepositoryOwnerAndNameMessage> for BoardRepositoryRepository {
-    type Result = Result<Vec<BoardRepository>, GITrelloError>;
+impl Handler<DeleteBoardRepositoryMessage> for BoardRepositoryRepository {
+    type Result = Result<(), GITrelloError>;
 
     fn handle(
         &mut self,
-        msg: GetBoardRepositoryByRepositoryOwnerAndNameMessage,
+        msg: DeleteBoardRepositoryMessage,
         _ctx: &mut Self::Context,
     ) -> Self::Result
     {
-        self.get_by_repository_owner_and_name(msg.repository_owner.as_str(), msg.repository_name.as_str())
+        self.delete(msg.id)
     }
 }

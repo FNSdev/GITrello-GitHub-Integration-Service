@@ -48,6 +48,23 @@ pub async fn create_or_update_board_repository(
     }
 }
 
+#[delete("/api/v1/board-repositories/{id}")]
+pub async fn delete_board_repository(
+    req: HttpRequest,
+    web::Path((id, )): web::Path<(i32, )>,
+    state: web::Data<State>,
+) -> Result<HttpResponse, GITrelloError> {
+    let user = User::from_request_extensions(req.extensions());
+    if !user.is_authenticated() {
+        return Err(GITrelloError::NotAuthenticated)
+    }
+
+    let board_repository_service = BoardRepositoryService::new(&state, &user)?;
+    board_repository_service.delete(id).await?;
+
+    Ok(HttpResponse::NoContent().finish())
+}
+
 #[get("/api/v1/board-repository")]
 pub async fn get_board_repository(
     req: HttpRequest,

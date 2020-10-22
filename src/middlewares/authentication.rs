@@ -84,7 +84,7 @@ impl<S, B> Service for JWTAuthenticationMiddleware<S>
                 warn!("Invalid Authorization header {}", header_value);
             }
             else {
-                let state: Option<Data<State>> = req.app_data();
+                let state: Option<&Data<State>> = req.app_data();
                 if let Some(state) = state {
                     let claims = get_claims(parts[1], state.secret.as_ref());
                     if let Some(claims) = claims {
