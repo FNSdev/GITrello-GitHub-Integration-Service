@@ -1,0 +1,26 @@
+global:
+  postgresql:
+    postgresqlDatabase: "gitrello_github_integration_service"
+    postgresqlUsername: "gitrello_github_integration_service"
+    postgresqlPassword: "example"
+image:
+  tag: "12.4.0"
+service:
+  type: "LoadBalancer"
+  annotations:
+    metallb.universe.tf/allow-shared-ip: "gitrello"
+master:
+  nodeSelector:
+    type: "postgresql"
+resources:
+  limits:
+    cpu: "1"
+    memory: "1Gi"
+  requests:
+    cpu: "1"
+    memory: "1Gi"
+persistence:
+  size: "2Gi"
+  storageClass: "postgresql-sc"
+volumePermissions:
+  enabled: true
