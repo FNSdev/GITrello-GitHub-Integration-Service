@@ -40,6 +40,7 @@ async fn main() -> std::io::Result<()> {
             .service(api::github_profile::get_github_profile)
             .service(api::github_repository::get_github_repositories)
             .service(api::github_webhook::github_webhook)
+            .service(api::ping::ping)
     })
     .bind("0.0.0.0:8001")?
     .run()
