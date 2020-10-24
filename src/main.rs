@@ -41,7 +41,7 @@ async fn main() -> std::io::Result<()> {
             .service(api::github_repository::get_github_repositories)
             .service(api::github_webhook::github_webhook)
     })
-    .bind("127.0.0.1:8001")?
+    .bind("0.0.0.0:8001")?
     .run()
     .await
 }
