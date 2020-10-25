@@ -1,0 +1,102 @@
+# Default values for gitrello-github-integration-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Required for liveness & readiness probes
+host: example.com
+
+labels:
+  app: gitrello-github-integration-service
+
+selectorLabels:
+  app: gitrello-github-integration-service
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "default"
+
+secret:
+  # Secret's name
+  name: gitrello-github-integration-environment
+
+  # Required secrets
+  environment: "PROD"
+  db_pool_min_idle: "8"
+  db_pool_max_size: "24"
+  db_url: "postgres://gitrello_github_integration_service:admin@127.0.0.1:5432/gitrello_github_integration_service"
+  rust_log: "info"
+  secret: "example"
+  gitrello_host: "https://gitrello.me"
+  gitrello_url: "https://gitrello.me"
+  webhook_url: "https://gitrello.me/github/api/v1/webhook"
+  gitrello_access_token: "example"
+
+deployment:
+  replicaCount: 1
+
+  image:
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: 0.1
+
+  imagePullSecrets: []
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:environment
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  resources: { }
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 128Mi
+
+  nodeSelector: { }
+  tolerations: [ ]
+  affinity: { }
+
+service:
+  type: ClusterIP
+  port: 8001
+
+ingress:
+  enabled: false
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths: []
+      # paths:
+      #   - host: gitrello.me
+      #     paths:
+      #       - path: /
+      #         type: Prefix
+      #   - host: www.gitrello.me
+      #     paths:
+      #       - path: /
+      #         type: Prefix
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local

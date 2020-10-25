@@ -1,0 +1,8 @@
+apiVersion: v2
+name: gitrello-github-integration-service
+description: GitHub Integration Service for GITrello
+
+type: application
+
+version: 0.1.0
+appVersion: 0.1.0
