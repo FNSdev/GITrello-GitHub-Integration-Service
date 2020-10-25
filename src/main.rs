@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
             .data(state.clone())
             .wrap(middlewares::authentication::JWTAuthentication)
             .wrap(Cors::new()
-                .allowed_origin(state.gitrello_url.as_str())
+                .allowed_origin(state.gitrello_host.as_str())
                 .finish()
             )
             .wrap(Logger::default())
