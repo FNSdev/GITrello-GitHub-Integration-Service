@@ -7,7 +7,7 @@ RUN cargo build --release
 RUN rm src/*.rs
 
 COPY src src
-COPY diesel.toml diesel.toml
+COPY diesel.toml ./
 RUN rm ./target/release/deps/gitrello_github_integration_service*
 RUN cargo build --release
 
