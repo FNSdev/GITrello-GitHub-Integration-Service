@@ -1,6 +1,7 @@
 table! {
     board_repository (id) {
         id -> Int4,
+        github_profile_id -> Int4,
         board_id -> Int8,
         repository_name -> Varchar,
         repository_owner -> Varchar,
@@ -26,6 +27,7 @@ table! {
     }
 }
 
+joinable!(board_repository -> github_profile (github_profile_id));
 joinable!(github_webhook -> board_repository (board_repository_id));
 
 allow_tables_to_appear_in_same_query!(

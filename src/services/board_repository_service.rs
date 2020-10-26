@@ -74,8 +74,13 @@ impl<'a> BoardRepositoryService<'a> {
             Err(e) => {
                 match e {
                     GITrelloError::NotFound {message: _ } => {
+                        let github_profile_service = GithubProfileService::new(self.state, self.user)?;
+                        let github_profile = github_profile_service
+                            .get_by_user_id(self.user.id.expect("already checked"))
+                            .await?;
+
                         let board_repository = self
-                            .create(board_id, repository_name, repository_owner)
+                            .create(github_profile.id, board_id, repository_name, repository_owner)
                             .await?;
 
                         let github_webhook_service = GithubWebhookService::new(self.state, self.user).await?;
@@ -163,6 +168,7 @@ impl<'a> BoardRepositoryService<'a> {
 
     async fn create(
         &self,
+        github_profile_id: i32,
         board_id: i64,
         repository_name: &str,
         repository_owner: &str,
@@ -171,6 +177,7 @@ impl<'a> BoardRepositoryService<'a> {
         self.actor
             .send(CreateBoardRepositoryMessage {
                 data: NewBoardRepository {
+                    github_profile_id,
                     board_id,
                     repository_name: repository_name.to_string(),
                     repository_owner: repository_owner.to_string(),
