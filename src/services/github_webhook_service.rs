@@ -37,7 +37,7 @@ impl<'a> GithubWebhookService<'a> {
         let connection = state.get_db_connection()?;
         let actor = GithubWebhookRepository::new(connection).start();
 
-        let github_profile_service = GithubProfileService::new(state, user)?;
+        let github_profile_service = GithubProfileService::new(state)?;
         let github_profile = github_profile_service
             .get_by_user_id(user.id.expect("already checked"))
             .await?;

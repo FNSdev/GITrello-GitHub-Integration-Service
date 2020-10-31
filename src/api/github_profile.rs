@@ -19,9 +19,9 @@ pub async fn create_github_profile(
         return Err(GITrelloError::NotAuthenticated)
     }
 
-    let github_profile_service = GithubProfileService::new(&state, &user)?;
+    let github_profile_service = GithubProfileService::new(&state)?;
     let github_profile = github_profile_service
-        .create(json.access_token.as_str())
+        .create(user.id.expect("already checked"), json.access_token.as_str())
         .await?;
 
     let response_data = GithubProfileResponse {
@@ -45,7 +45,7 @@ pub async fn get_github_profile(
         return Err(GITrelloError::NotAuthenticated)
     }
 
-    let github_profile_service = GithubProfileService::new(&state, &user)?;
+    let github_profile_service = GithubProfileService::new(&state)?;
     let github_profile = github_profile_service
         .get_by_user_id(user.id.expect("already checked"))
         .await?;
@@ -58,4 +58,22 @@ pub async fn get_github_profile(
     };
 
     Ok(HttpResponse::Ok().json(response_data))
+}
+
+
+#[delete("/api/v1/github-profile")]
+pub async fn delete_github_profile(
+    req: HttpRequest,
+    state: web::Data<State>,
+) -> Result<HttpResponse, GITrelloError>
+{
+    let user = User::from_request_extensions(req.extensions());
+    if !user.is_authenticated() {
+        return Err(GITrelloError::NotAuthenticated)
+    }
+
+    let github_profile_service = GithubProfileService::new(&state)?;
+    github_profile_service.delete(user.id.expect("already checked")).await?;
+
+    Ok(HttpResponse::NoContent().finish())
 }

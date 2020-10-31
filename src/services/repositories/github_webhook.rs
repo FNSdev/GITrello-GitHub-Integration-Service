@@ -2,7 +2,7 @@ use actix::{Actor, Context, Handler, Message};
 use diesel::{insert_into, update, result::Error, BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl};
 
 use crate::errors::GITrelloError;
-use crate::models::github_webhook::{GithubWebhook, NewGithubWebhook};
+use crate::models::github_webhook::{GithubWebhook, GithubWebhookWithRepositoryInfo, NewGithubWebhook};
 use crate::state::DbConnection;
 
 pub struct GithubWebhookRepository {
@@ -79,6 +79,31 @@ impl GithubWebhookRepository {
                 }
             })
     }
+
+    pub fn get_distinct_webhooks_by_github_profile_id(
+        &self,
+        github_profile_id: i32,
+    ) -> Result<Vec<GithubWebhookWithRepositoryInfo>, GITrelloError>
+    {
+        use crate::schema::github_profile;
+        use crate::schema::github_webhook;
+        use crate::schema::board_repository;
+
+        github_webhook::table
+            .inner_join(
+                board_repository::table
+                    .inner_join(github_profile::table),
+            )
+            .select((
+                github_webhook::webhook_id,
+                board_repository::repository_name,
+                board_repository::repository_owner,
+            ))
+            .distinct()
+            .filter(github_profile::id.eq(github_profile_id))
+            .load::<GithubWebhookWithRepositoryInfo>(&self.connection)
+            .map_err(|source| GITrelloError::DieselError { source })
+    }
 }
 
 impl Actor for GithubWebhookRepository {
@@ -144,5 +169,24 @@ impl Handler<GetByRepositoryNameAndOwnerMessage> for GithubWebhookRepository {
             msg.repository_name.as_str(),
             msg.repository_owner.as_str(),
         )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Vec<GithubWebhookWithRepositoryInfo>, GITrelloError>")]
+pub struct GetDistinctWebhooksByGithubProfileIdMessage {
+    pub github_profile_id: i32,
+}
+
+impl Handler<GetDistinctWebhooksByGithubProfileIdMessage> for GithubWebhookRepository {
+    type Result = Result<Vec<GithubWebhookWithRepositoryInfo>, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: GetDistinctWebhooksByGithubProfileIdMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.get_distinct_webhooks_by_github_profile_id(msg.github_profile_id)
     }
 }

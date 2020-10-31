@@ -74,7 +74,7 @@ impl<'a> BoardRepositoryService<'a> {
             Err(e) => {
                 match e {
                     GITrelloError::NotFound {message: _ } => {
-                        let github_profile_service = GithubProfileService::new(self.state, self.user)?;
+                        let github_profile_service = GithubProfileService::new(self.state)?;
                         let github_profile = github_profile_service
                             .get_by_user_id(self.user.id.expect("already checked"))
                             .await?;
@@ -118,7 +118,7 @@ impl<'a> BoardRepositoryService<'a> {
             .map_err(|source| GITrelloError::ActorError { source })??;
 
         if github_webhooks.len() == 1 {
-            let github_profile_service = GithubProfileService::new(self.state, self.user)?;
+            let github_profile_service = GithubProfileService::new(self.state)?;
             let github_profile = github_profile_service
                 .get_by_user_id(self.user.id.expect("already checked"))
                 .await?;

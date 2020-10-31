@@ -18,3 +18,10 @@ pub struct NewGithubWebhook {
     pub url: String,
     pub board_repository_id: i32,
 }
+
+#[derive(Deserialize, Queryable)]
+pub struct GithubWebhookWithRepositoryInfo {
+    pub webhook_id: i64,
+    pub board_repository_name: String,
+    pub board_repository_owner: String,
+}

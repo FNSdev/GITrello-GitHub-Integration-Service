@@ -1,6 +1,7 @@
 use actix::{Actor, Context, Handler, Message};
 use diesel::{
-    insert_into, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl, ExpressionMethods,
+    delete, insert_into, result::DatabaseErrorKind, result::Error, RunQueryDsl, QueryDsl,
+    ExpressionMethods,
 };
 
 use crate::errors::GITrelloError;
@@ -49,6 +50,13 @@ impl GithubProfileRepository {
                 }
             })
     }
+
+    pub fn delete(&self, id: i32) -> Result<(), GITrelloError> {
+        use crate::schema::github_profile::{table, id as id_column};
+
+        delete(table.filter(id_column.eq(id))).execute(&self.connection)?;
+        Ok(())
+    }
 }
 
 impl Actor for GithubProfileRepository {
@@ -92,3 +100,23 @@ impl Handler<GetGithubProfileByUserIdMessage> for GithubProfileRepository {
         self.get_by_user_id(msg.user_id)
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<(), GITrelloError>")]
+pub struct DeleteGithubProfileMessage {
+    pub id: i32,
+}
+
+impl Handler<DeleteGithubProfileMessage> for GithubProfileRepository {
+    type Result = Result<(), GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: DeleteGithubProfileMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.delete(msg.id)
+    }
+}
+
