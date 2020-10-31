@@ -1,6 +1,6 @@
 [package]
 name = "gitrello-github-integration-service"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Uladzislau Stasheuski <fnsdevelopment@gmail.com>"]
 edition = "2018"
 
