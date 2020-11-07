@@ -51,6 +51,24 @@ impl GithubProfileRepository {
             })
     }
 
+    pub fn get_by_github_user_id(&self, github_user_id: i64) -> Result<GithubProfile, GITrelloError> {
+        use crate::schema::github_profile::{table, github_user_id as github_user_id_column};
+
+        table
+            .filter(github_user_id_column.eq(github_user_id))
+            .first::<GithubProfile>(&self.connection)
+            .map_err(|source| {
+                match source {
+                    Error::NotFound => GITrelloError::NotFound {
+                        message: String::from(
+                            format!("github_profile for GitHub user {} does not exist", github_user_id),
+                        )
+                    },
+                    _ => GITrelloError::DieselError { source }
+                }
+            })
+    }
+
     pub fn delete(&self, id: i32) -> Result<(), GITrelloError> {
         use crate::schema::github_profile::{table, id as id_column};
 
@@ -102,6 +120,25 @@ impl Handler<GetGithubProfileByUserIdMessage> for GithubProfileRepository {
 }
 
 #[derive(Message)]
+#[rtype(result = "Result<GithubProfile, GITrelloError>")]
+pub struct GetGithubProfileByGithubUserIdMessage {
+    pub github_user_id: i64,
+}
+
+impl Handler<GetGithubProfileByGithubUserIdMessage> for GithubProfileRepository {
+    type Result = Result<GithubProfile, GITrelloError>;
+
+    fn handle(
+        &mut self,
+        msg: GetGithubProfileByGithubUserIdMessage,
+        _ctx: &mut Self::Context,
+    ) -> Self::Result
+    {
+        self.get_by_github_user_id(msg.github_user_id)
+    }
+}
+
+#[derive(Message)]
 #[rtype(result = "Result<(), GITrelloError>")]
 pub struct DeleteGithubProfileMessage {
     pub id: i32,
@@ -119,4 +156,3 @@ impl Handler<DeleteGithubProfileMessage> for GithubProfileRepository {
         self.delete(msg.id)
     }
 }
-

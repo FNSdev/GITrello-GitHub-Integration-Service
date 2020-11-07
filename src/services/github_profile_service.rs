@@ -7,8 +7,8 @@ use crate::models::github_profile::{GithubProfile, NewGithubProfile};
 use crate::models::github_webhook::{GithubWebhookWithRepositoryInfo};
 use crate::services::github_api_client::GitHubAPIClient;
 use crate::services::repositories::github_profile::{
-    GetGithubProfileByUserIdMessage, GithubProfileRepository, CreateGithubProfileMessage,
-    DeleteGithubProfileMessage,
+    GetGithubProfileByGithubUserIdMessage, GetGithubProfileByUserIdMessage, GithubProfileRepository,
+    CreateGithubProfileMessage, DeleteGithubProfileMessage,
 };
 use crate::services::repositories::github_webhook::{
     GetDistinctWebhooksByGithubProfileIdMessage, GithubWebhookRepository,
@@ -34,23 +34,43 @@ impl<'a> GithubProfileService<'a> {
             .map_err(|source| GITrelloError::ActorError { source })?
     }
 
-    // TODO do not allow to login via GitHub in multiple accounts
     pub async fn create(&self, user_id: i64, access_token: &str) -> Result<GithubProfile, GITrelloError>
     {
         let github_api_client = GitHubAPIClient::new(access_token);
         let github_user = github_api_client.get_user().await?;
 
-        self.actor
-            .send(CreateGithubProfileMessage {
-                data: NewGithubProfile {
-                    user_id,
-                    github_user_id: github_user.id,
-                    github_login: github_user.login,
-                    access_token: access_token.to_string(),
-                },
-            })
+        let existing_github_profile = self.actor
+            .send(GetGithubProfileByGithubUserIdMessage { github_user_id: github_user.id })
             .await
-            .map_err(|source| GITrelloError::ActorError { source })?
+            .map_err(|source| GITrelloError::ActorError { source })?;
+
+        match existing_github_profile {
+            Ok(_) => {
+                Err(
+                    GITrelloError::AlreadyExists {
+                        message: String::from("This GitHub account is being used by another GITrello user"),
+                    },
+                )
+            },
+            Err(e) => {
+                match e {
+                    GITrelloError::NotFound { message: _ } => {
+                        self.actor
+                            .send(CreateGithubProfileMessage {
+                                data: NewGithubProfile {
+                                    user_id,
+                                    github_user_id: github_user.id,
+                                    github_login: github_user.login,
+                                    access_token: access_token.to_string(),
+                                },
+                            })
+                            .await
+                            .map_err(|source| GITrelloError::ActorError { source })?
+                    },
+                    _ => Err(e)
+                }
+            }
+        }
     }
 
     pub async fn delete(&self, user_id: i64) -> Result<(), GITrelloError> {
