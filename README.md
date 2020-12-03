@@ -1,6 +1,6 @@
 # GITrello
 
-[![Build Status](https://gitrello.me/jenkins/buildStatus/icon?job=gitrello-github-integration-service)](https://gitrello.me/jenkins/job/gitrello/)
+[![Build Status](https://gitrello.me/jenkins/buildStatus/icon?job=gitrello-github-integration-service)](https://gitrello.me/jenkins/job/gitrello-github-integration-service/)
 
 ## How to run locally
 
