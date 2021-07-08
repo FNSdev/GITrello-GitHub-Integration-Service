@@ -1,10 +1,13 @@
 use std::env;
 
 use dotenv::dotenv;
-use diesel::r2d2::{self, ConnectionManager};
+use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::PgConnection;
 
+use crate::errors::GITrelloError;
+
 type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+pub type DbConnection = PooledConnection<ConnectionManager<PgConnection>>;
 
 #[derive(Clone, PartialEq)]
 pub enum Environment {
@@ -17,6 +20,19 @@ pub enum Environment {
 pub struct State {
     pub environment: Environment,
     pub db_pool: DbPool,
+    pub secret: String,
+    pub gitrello_host: String,
+    pub gitrello_url: String,
+    pub gitrello_access_token: String,
+    pub webhook_url: String,
+}
+
+impl State {
+    pub fn get_db_connection(&self) -> Result<DbConnection, GITrelloError> {
+        self.db_pool
+            .get()
+            .map_err(|source| GITrelloError::R2D2Error { source })
+    }
 }
 
 pub fn get_state() -> State {
@@ -52,6 +68,14 @@ pub fn get_state() -> State {
         .build(manager)
         .expect("Failed to create database connection pool.");
 
-    let state = State {environment, db_pool};
+    let state = State {
+        environment,
+        db_pool,
+        secret: env::var("SECRET").expect("SECRET"),
+        gitrello_host: env::var("GITRELLO_HOST").expect("GITRELLO_HOST"),
+        gitrello_url: env::var("GITRELLO_URL").expect("GITRELLO_URL"),
+        gitrello_access_token: env::var("GITRELLO_ACCESS_TOKEN").expect("GITRELLO_ACCESS_TOKEN"),
+        webhook_url: env::var("WEBHOOK_URL").expect("WEBHOOK_URL"),
+    };
     state
 }
